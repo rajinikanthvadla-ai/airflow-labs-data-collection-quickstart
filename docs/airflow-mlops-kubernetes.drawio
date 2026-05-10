@@ -1,0 +1,91 @@
+<mxfile host="65bd71144e">
+    <diagram id="airflow-mlops-kubernetes" name="Airflow MLOps Kubernetes">
+        <mxGraphModel dx="524" dy="596" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="cluster" value="KIND Kubernetes Cluster&#10;1 control-plane + 2 workers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f0fe;strokeColor=#1a73e8;fontStyle=1;verticalAlign=top;spacingTop=12;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="120" width="850" height="540" as="geometry"/>
+                </mxCell>
+                <mxCell id="github" value="GitHub Repository&#10;4 collection DAGs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#111827;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="230" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="gitsync" value="git-sync sidecar&#10;polls branch main&#10;subPath: dags" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="210" width="150" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="dagvol" value="Shared DAG Volume&#10;Airflow reads synced DAGs" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="215" width="150" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="scheduler" value="Scheduler&#10;creates DAG runs&#10;queues tasks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="190" width="150" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="webserver" value="Airflow Webserver&#10;UI: trigger / monitor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="310" width="150" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="postgres" value="PostgreSQL&#10;metadata DB" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="190" width="140" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="redis" value="Redis&#10;Celery queue" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="310" width="140" height="75" as="geometry"/>
+                </mxCell>
+                <mxCell id="worker" value="Celery Worker&#10;runs PythonOperator tasks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="470" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="apis" value="Public APIs&#10;JSONPlaceholder&#10;Google Books API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="1160" y="220" width="170" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="websites" value="Websites&#10;scrape + light crawl&#10;robots.txt checked" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="1160" y="340" width="170" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="csv" value="CSV Staging&#10;/opt/airflow/data&#10;inside worker pod" style="shape=folder;whiteSpace=wrap;html=1;tabWidth=40;tabHeight=14;tabPosition=left;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="470" width="150" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3" value="AWS S3 Bucket&#10;final CSV output&#10;s3://bucket/prefix/*.csv" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1160" y="500" width="170" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="secret" value="Kubernetes Secret&#10;aws-s3-creds&#10;loaded into worker env" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="475" width="160" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="name" value="Rajinikanth Vadla&#10;MLOps Data Collection Lab" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=16;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="50" width="320" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" style="endArrow=block;html=1;rounded=0;" parent="1" source="github" target="gitsync" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" style="endArrow=block;html=1;rounded=0;" parent="1" source="gitsync" target="dagvol" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" style="endArrow=block;html=1;rounded=0;" parent="1" source="dagvol" target="scheduler" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" style="endArrow=block;html=1;rounded=0;" parent="1" source="scheduler" target="postgres" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" style="endArrow=block;html=1;rounded=0;" parent="1" source="scheduler" target="redis" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" style="endArrow=block;html=1;rounded=0;" parent="1" source="redis" target="worker" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" style="endArrow=block;html=1;rounded=0;" parent="1" source="webserver" target="scheduler" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" style="endArrow=block;html=1;rounded=0;" parent="1" source="worker" target="apis" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" style="endArrow=block;html=1;rounded=0;" parent="1" source="worker" target="websites" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" style="endArrow=block;html=1;rounded=0;" parent="1" source="worker" target="csv" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" style="endArrow=block;html=1;rounded=0;" parent="1" source="csv" target="s3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e12" style="endArrow=block;html=1;rounded=0;dashed=1;" parent="1" source="secret" target="worker" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

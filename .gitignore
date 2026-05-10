@@ -1,5 +1,4 @@
-host-airflow-data/*.csv
-host-airflow-data/*.parquet
+airflow-output/
 __pycache__/
 *.pyc
 .venv/

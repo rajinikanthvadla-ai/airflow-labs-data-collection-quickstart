@@ -44,14 +44,6 @@ migrateDatabaseJob:
 
 workers:
   replicas: 1
-  extraVolumes:
-    - name: host-collected-data
-      hostPath:
-        path: /host-airflow-data
-        type: DirectoryOrCreate
-  extraVolumeMounts:
-    - name: host-collected-data
-      mountPath: /opt/airflow/data
 
 triggerer:
   enabled: false

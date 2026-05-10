@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="850" viewBox="0 0 1400 850" role="img" aria-labelledby="title desc">
+  <title id="title">Airflow on KIND for MLOps data collection to S3</title>
+  <desc id="desc">GitHub DAGs sync into Airflow on a three-node KIND cluster. The scheduler queues tasks through Redis to Celery workers. Workers collect data, stage CSV files, and upload them to AWS S3 using Kubernetes Secret credentials.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#111827"/>
+    </marker>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 600 16px Arial, sans-serif; fill: #374151; }
+      .box-title { font: 700 17px Arial, sans-serif; fill: #111827; }
+      .box-text { font: 14px Arial, sans-serif; fill: #111827; }
+      .small { font: 12px Arial, sans-serif; fill: #374151; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 14; ry: 14; }
+      .edge { stroke: #111827; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .edge-dash { stroke: #111827; stroke-width: 3; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1400" height="850" fill="#ffffff"/>
+  <text x="40" y="50" class="title">Airflow on KIND: GitHub DAG Sync to AWS S3</text>
+  <text x="40" y="78" class="subtitle">MLOps data collection reference by Rajinikanth Vadla</text>
+
+  <rect x="235" y="120" width="875" height="580" rx="18" ry="18" fill="#f8fafc" stroke="#0f172a" stroke-width="4"/>
+  <text x="265" y="155" class="box-title">KIND Kubernetes Cluster</text>
+  <text x="265" y="180" class="box-text">3 nodes: 1 control-plane + 2 workers</text>
+
+  <rect x="40" y="240" width="165" height="92" class="box" stroke="#111827"/>
+  <text x="62" y="274" class="box-title">GitHub Repo</text>
+  <text x="62" y="300" class="box-text">dags/</text>
+  <text x="62" y="322" class="box-text">4 collection DAGs</text>
+
+  <rect x="280" y="230" width="165" height="105" class="box" stroke="#ca8a04"/>
+  <text x="306" y="262" class="box-title">git-sync</text>
+  <text x="306" y="288" class="box-text">polls main</text>
+  <text x="306" y="310" class="box-text">subPath: dags</text>
+
+  <rect x="490" y="230" width="170" height="105" class="box" stroke="#ca8a04"/>
+  <text x="520" y="262" class="box-title">DAG Volume</text>
+  <text x="520" y="288" class="box-text">synced DAG files</text>
+  <text x="520" y="310" class="box-text">inside Airflow</text>
+
+  <rect x="715" y="210" width="170" height="105" class="box" stroke="#15803d"/>
+  <text x="748" y="242" class="box-title">Scheduler</text>
+  <text x="748" y="268" class="box-text">parses DAG</text>
+  <text x="748" y="290" class="box-text">queues tasks</text>
+
+  <rect x="715" y="355" width="170" height="92" class="box" stroke="#15803d"/>
+  <text x="747" y="389" class="box-title">Webserver UI</text>
+  <text x="747" y="415" class="box-text">trigger and monitor</text>
+
+  <rect x="930" y="200" width="150" height="92" class="box" stroke="#2563eb"/>
+  <text x="958" y="234" class="box-title">PostgreSQL</text>
+  <text x="958" y="260" class="box-text">metadata DB</text>
+
+  <rect x="930" y="340" width="150" height="92" class="box" stroke="#dc2626"/>
+  <text x="978" y="374" class="box-title">Redis</text>
+  <text x="960" y="400" class="box-text">Celery queue</text>
+
+  <rect x="700" y="530" width="190" height="105" class="box" stroke="#7c3aed"/>
+  <text x="746" y="562" class="box-title">Celery Worker</text>
+  <text x="735" y="588" class="box-text">runs PythonOperator</text>
+  <text x="735" y="610" class="box-text">one source per DAG</text>
+
+  <rect x="465" y="530" width="165" height="105" class="box" stroke="#ea580c"/>
+  <text x="500" y="562" class="box-title">K8s Secret</text>
+  <text x="492" y="588" class="box-text">aws-s3-creds</text>
+  <text x="492" y="610" class="box-text">worker env vars</text>
+
+  <rect x="1165" y="225" width="185" height="105" class="box" stroke="#111827"/>
+  <text x="1206" y="257" class="box-title">Public APIs</text>
+  <text x="1195" y="283" class="box-text">JSONPlaceholder</text>
+  <text x="1195" y="305" class="box-text">Google Books</text>
+
+  <rect x="1165" y="365" width="185" height="105" class="box" stroke="#111827"/>
+  <text x="1216" y="397" class="box-title">Websites</text>
+  <text x="1198" y="423" class="box-text">scrape pages</text>
+  <text x="1198" y="445" class="box-text">light crawl</text>
+
+  <rect x="930" y="540" width="150" height="95" class="box" stroke="#ca8a04"/>
+  <text x="957" y="574" class="box-title">CSV Stage</text>
+  <text x="953" y="600" class="box-text">/opt/airflow/data</text>
+
+  <rect x="1165" y="535" width="185" height="110" class="box" stroke="#15803d"/>
+  <text x="1214" y="570" class="box-title">AWS S3</text>
+  <text x="1192" y="596" class="box-text">final CSV output</text>
+  <text x="1192" y="618" class="box-text">bucket / prefix</text>
+
+  <path class="edge" d="M205 286 H280"/>
+  <path class="edge" d="M445 282 H490"/>
+  <path class="edge" d="M660 282 H715"/>
+  <path class="edge" d="M885 247 H930"/>
+  <path class="edge" d="M885 292 C915 300 915 350 930 374"/>
+  <path class="edge" d="M1005 432 C1005 520 920 555 890 575"/>
+  <path class="edge-dash" d="M630 582 H700"/>
+  <path class="edge" d="M885 582 H930"/>
+  <path class="edge" d="M1080 585 H1165"/>
+  <path class="edge" d="M890 552 C1020 475 1085 300 1165 278"/>
+  <path class="edge" d="M890 600 C1010 555 1090 450 1165 418"/>
+  <path class="edge" d="M800 355 V315"/>
+
+  <text x="238" y="273" class="small">clone every 60 sec</text>
+  <text x="1130" y="520" class="small">upload each CSV to S3</text>
+</svg>
