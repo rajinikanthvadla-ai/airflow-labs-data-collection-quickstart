@@ -88,6 +88,7 @@ Edit `helm/airflow-values.yaml`: set `dags.gitSync.repo` to the **HTTPS** URL of
 
 ```powershell
 helm upgrade --install airflow apache-airflow/airflow -n airflow -f helm/airflow-values.yaml --version 1.18.0
+# With S3 Secret wired to workers: add `-f helm/workers-s3-secret.yaml`
 kubectl get pods -n airflow -w
 ```
 
@@ -115,7 +116,7 @@ kubectl create secret generic aws-s3-creds -n airflow `
   --from-literal=S3_BUCKET=your-bucket
 ```
 
-Reference: [extraEnv / extraEnvFrom](https://airflow.apache.org/docs/helm-chart/stable/adding-connections-and-variables.html). The DAG’s upload step no-ops until `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `S3_BUCKET` are non-empty in the worker process. Optional: `AWS_ENDPOINT_URL` (S3-compatible endpoint), `S3_PREFIX` (defaults to `airflow-collected` in code).
+Use `helm/workers-s3-secret.yaml` as a second `-f` file so those keys reach Celery workers. Reference: [extraEnv / extraEnvFrom](https://airflow.apache.org/docs/helm-chart/stable/adding-connections-and-variables.html). The DAG’s upload step no-ops until `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `S3_BUCKET` are non-empty in the worker process. Optional Secret keys: `AWS_ENDPOINT_URL`, `S3_PREFIX` (otherwise code defaults prefix to `airflow-collected`).
 
 Optional quota: set `GOOGLE_BOOKS_API_KEY` on workers if the Books API throttles unauthenticated calls.
 
