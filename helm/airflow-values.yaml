@@ -1,0 +1,60 @@
+# Chart: https://airflow.apache.org/docs/helm-chart/stable/index.html
+# After: docker build -t airflow-lab:local . && kind load docker-image airflow-lab:local --name <cluster>
+# Set dags.gitSync.repo to the HTTPS URL of the repo that contains this dags/ folder.
+
+images:
+  airflow:
+    repository: airflow-lab
+    tag: local
+    pullPolicy: Never
+
+executor: CeleryExecutor
+
+config:
+  core:
+    load_examples: "False"
+
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: true
+    repo: https://github.com/YOUR_ORG/airflow-labs-data-collection-quickstart.git
+    branch: main
+    rev: HEAD
+    depth: 1
+    subPath: "dags"
+    wait: 60
+    uid: 65533
+
+createUserJob:
+  useHelmHooks: false
+  applyCustomEnv: false
+  defaultUser:
+    role: Admin
+    username: admin
+    email: admin@example.com
+    firstName: admin
+    lastName: admin
+    password: admin
+
+migrateDatabaseJob:
+  useHelmHooks: false
+  applyCustomEnv: false
+
+workers:
+  replicas: 1
+  extraVolumes:
+    - name: host-collected-data
+      hostPath:
+        path: /host-airflow-data
+        type: DirectoryOrCreate
+  extraVolumeMounts:
+    - name: host-collected-data
+      mountPath: /opt/airflow/data
+
+triggerer:
+  enabled: false
+
+flower:
+  enabled: false
