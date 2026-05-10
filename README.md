@@ -6,9 +6,9 @@ flowchart LR
     R[DAGs + Python in repo]
   end
   subgraph cluster["KIND Kubernetes"]
-    subgraph sync["DAG delivery"]
-      G[git-sync init container]
-      V[(emptyDir / PVC DAG volume)]
+    subgraph git_delivery["DAG delivery"]
+      G[git-sync sidecar]
+      V[(shared DAG volume)]
     end
     subgraph control["Control plane"]
       S[Airflow scheduler]
