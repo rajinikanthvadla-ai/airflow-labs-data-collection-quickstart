@@ -23,8 +23,8 @@ dags:
     branch: main
     rev: HEAD
     depth: 1
-    subPath: "dags"
-    wait: 60
+    subPath: ""
+    wait: 30
     uid: 65533
 
 createUserJob:
