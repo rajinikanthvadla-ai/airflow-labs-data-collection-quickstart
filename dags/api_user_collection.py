@@ -4,10 +4,12 @@ import csv
 import os
 from typing import Any
 
+import boto3
 import pendulum
 import requests
 
 from airflow import DAG
+from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 
 
@@ -21,7 +23,7 @@ def ensure_out() -> None:
 
 def collect_public_user_api(**context: Any) -> str:
     """
-    Collect public users from API and save as CSV.
+    Collect public user data from API and save as CSV.
     """
 
     ensure_out()
@@ -33,10 +35,10 @@ def collect_public_user_api(**context: Any) -> str:
     )
     response.raise_for_status()
 
-    execution_date = context["ds_nodash"]
-    path = os.path.join(OUT, f"public_users_api_{execution_date}.csv")
+    file_name = f"public_users_api_{context['ds_nodash']}.csv"
+    file_path = os.path.join(OUT, file_name)
 
-    with open(path, "w", newline="", encoding="utf-8") as file:
+    with open(file_path, "w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(
             file,
             fieldnames=[
@@ -63,13 +65,13 @@ def collect_public_user_api(**context: Any) -> str:
                 }
             )
 
-    print(f"CSV file created successfully: {path}")
-    return path
+    print(f"CSV created successfully: {file_path}")
+    return file_path
 
 
-def validate_file(**context: Any) -> None:
+def upload_public_user_api_to_s3(**context: Any) -> None:
     """
-    Validate CSV file exists before next step.
+    Upload collected CSV file to S3 using Airflow Variables.
     """
 
     ti = context["ti"]
@@ -81,12 +83,30 @@ def validate_file(**context: Any) -> None:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"CSV file not found: {file_path}")
 
-    print(f"Validated file: {file_path}")
+    aws_access_key_id = Variable.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = Variable.get("AWS_SECRET_ACCESS_KEY")
+    aws_region = Variable.get("AWS_DEFAULT_REGION", default_var="ap-south-1")
+    s3_bucket = Variable.get("S3_BUCKET")
+    s3_prefix = Variable.get("S3_PREFIX", default_var="airflow-collected")
+
+    file_name = os.path.basename(file_path)
+    s3_key = f"{s3_prefix}/api-users/{file_name}"
+
+    s3_client = boto3.client(
+        "s3",
+        region_name=aws_region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    s3_client.upload_file(file_path, s3_bucket, s3_key)
+
+    print(f"Uploaded successfully to s3://{s3_bucket}/{s3_key}")
 
 
 with DAG(
-    dag_id="api_user_collection_to_local_csv",
-    description="Collect public user data from API and save as CSV file",
+    dag_id="api_user_collection_to_s3",
+    description="Collect users from public API, store as CSV, and upload to S3",
     default_args={
         "owner": "airflow",
         "retries": 1,
@@ -94,7 +114,7 @@ with DAG(
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     schedule="@daily",
     catchup=False,
-    tags=["api", "users", "csv", "mlops"],
+    tags=["api", "users", "csv", "s3", "mlops"],
 ) as dag:
 
     collect = PythonOperator(
@@ -102,9 +122,9 @@ with DAG(
         python_callable=collect_public_user_api,
     )
 
-    validate = PythonOperator(
-        task_id="validate_collected_csv_file",
-        python_callable=validate_file,
+    upload = PythonOperator(
+        task_id="upload_public_user_api_to_s3",
+        python_callable=upload_public_user_api_to_s3,
     )
 
-    collect >> validate
+    collect >> upload
