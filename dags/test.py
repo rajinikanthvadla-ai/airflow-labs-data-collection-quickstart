@@ -1,57 +1,40 @@
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from datetime import datetime, timedelta
-import requests
+from __future__ import annotations
+
 import json
 import os
+from typing import Any
+
+import pendulum
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from collection_utils import OUT, ensure_out, upload_to_s3
 
 
-def collect_users_from_api():
-    """
-    Simple API data collection function.
-    This pulls users from a public API and stores the response as JSON.
-    """
+def collect_users_from_api(**context: Any) -> str:
+    import requests
 
-    api_url = "https://jsonplaceholder.typicode.com/users"
-
-    response = requests.get(api_url, timeout=30)
+    ensure_out()
+    response = requests.get("https://jsonplaceholder.typicode.com/users", timeout=30)
     response.raise_for_status()
 
-    users = response.json()
-
-    output_dir = "/opt/airflow/data"
-    os.makedirs(output_dir, exist_ok=True)
-
-    output_file = f"{output_dir}/users.json"
-
-    with open(output_file, "w") as file:
-        json.dump(users, file, indent=4)
-
-    print(f"Successfully collected {len(users)} users")
-    print(f"Data saved to {output_file}")
+    path = os.path.join(OUT, f"test_users_{context['ds_nodash']}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(response.json(), f, indent=2)
+    return path
 
 
-default_args = {
-    "owner": "rajini",
-    "depends_on_past": False,
-    "retries": 1,
-    "retry_delay": timedelta(minutes=2),
-}
+def upload_test_users(**context: Any) -> None:
+    upload_to_s3(context["ti"].xcom_pull(task_ids="collect_users"), "test-users")
 
 
 with DAG(
-    dag_id="api_user_collection_dag",
-    default_args=default_args,
-    description="Simple DAG to collect user data from API",
-    start_date=datetime(2026, 5, 11),
+    dag_id="test_api_user_collection_to_s3",
+    default_args={"owner": "airflow", "retries": 1},
+    start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     schedule="@daily",
     catchup=False,
-    tags=["api", "data-collection", "users"],
+    tags=["test", "api", "s3"],
 ) as dag:
-
-    collect_users_task = PythonOperator(
-        task_id="collect_users_from_api",
-        python_callable=collect_users_from_api,
-    )
-
-    collect_users_task
+    collect = PythonOperator(task_id="collect_users", python_callable=collect_users_from_api)
+    upload = PythonOperator(task_id="upload_test_users_to_s3", python_callable=upload_test_users)
+    collect >> upload

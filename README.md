@@ -1,170 +1,237 @@
-# Airflow on KIND: GitHub DAG Sync to S3
+# Airflow 3.2 on KIND: Git-Sync DAGs + S3 Output
 
-MLOps data collection reference by **Rajinikanth Vadla**.
+MLOps data collection lab by **Rajinikanth Vadla**.
 
 ## Architecture
 
 ![Airflow on KIND MLOps architecture](docs/airflow-mlops-kubernetes.svg)
 
-Editable Draw.io source: [`docs/airflow-mlops-kubernetes.drawio`](docs/airflow-mlops-kubernetes.drawio)
+## What This Lab Does
 
-## What Runs
+| Component | Detail |
+|-----------|--------|
+| **Cluster** | KIND 3-node cluster (1 control-plane, 2 workers) |
+| **Airflow** | v3.2.0 with the **new React UI** |
+| **DAG sync** | Helm `gitSync` pulls `dags/` from GitHub every 60 s |
+| **Credentials** | AWS config stored as **Airflow Variables** (set via UI) |
+| **Output** | CSV/JSON files uploaded to **AWS S3** |
 
-- KIND cluster: **3 nodes** (`1 control-plane`, `2 workers`) from `kind-config.yaml`.
-- Airflow: installed by Helm chart from `helm/airflow-values.yaml`.
-- DAG sync: Helm `dags.gitSync` pulls the GitHub `dags/` folder every `60` seconds.
-- DAG files:
-  - `dags/api_user_collection.py` → `api_user_collection_to_s3`
-  - `dags/scraping_collection.py` → `scraping_collection_to_s3`
-  - `dags/crawling_collection.py` → `crawling_collection_to_s3`
-  - `dags/google_public_api_collection.py` → `google_public_api_collection_to_s3`
-- Final output: CSV files uploaded to **AWS S3**.
+## DAGs
+
+| DAG ID | Source | S3 Folder |
+|--------|--------|-----------|
+| `api_user_collection_to_s3` | JSONPlaceholder Users API | `api-users/` |
+| `scraping_collection_to_s3` | quotes.toscrape.com (BeautifulSoup) | `scraping/` |
+| `crawling_collection_to_s3` | quotes.toscrape.com (multi-page crawl) | `crawling/` |
+| `google_public_api_collection_to_s3` | Google Books API | `google-books/` |
+| `test_api_user_collection_to_s3` | JSONPlaceholder Users API (JSON) | `test-users/` |
+
+All DAGs: **collect data -> write local file -> upload to S3**.
 
 ## Data Flow
 
-1. Push DAG code to GitHub.
-2. Airflow `git-sync` pulls all Python DAGs from `dags/` into Kubernetes.
-3. Scheduler parses the four collection DAGs and queues tasks.
-4. Celery workers collect data from user API, website scraping, website crawling, and Google Books API.
-5. Worker writes CSV files in `/opt/airflow/data`.
-6. Each DAG uploads its own CSV file to `s3://S3_BUCKET/S3_PREFIX/<source-folder>/`.
+```
+GitHub repo (dags/)
+      |
+      v  (git-sync every 60s)
+KIND Cluster  -->  Airflow Scheduler  -->  Celery Worker
+                                              |
+                                    1. Collect data (API / Scrape / Crawl)
+                                    2. Write CSV/JSON to /opt/airflow/data
+                                    3. Read AWS creds from Airflow Variables
+                                    4. Upload file to S3 bucket
+```
 
 ## Prerequisites
 
-- Docker
-- kind
-- kubectl
-- Helm 3
-- AWS access key, secret key, region, and S3 bucket
-- GitHub HTTPS repo URL for this repository
+- **Docker Desktop** running
+- **kind** (`choco install kind` or [kind releases](https://kind.sigs.k8s.io/))
+- **kubectl** (`choco install kubernetes-cli`)
+- **Helm 3** (`choco install kubernetes-helm`)
+- **AWS account** with S3 access (access key, secret key, bucket name)
+- **GitHub** HTTPS URL to this repo (must be accessible from the cluster)
 
-## 1. Check KIND Nodes
+---
 
-`kind-config.yaml` already creates 3 nodes:
+## Step-by-Step Setup
 
-```yaml
-nodes:
-  - role: control-plane
-  - role: worker
-  - role: worker
-```
-
-No `extraMounts` are used.
-
-## 2. Create Cluster
+### 1. Create the KIND Cluster
 
 ```powershell
 kind create cluster --name airflow-lab --config kind-config.yaml
 ```
 
-## 3. Build Airflow Image
+Verify nodes:
+
+```powershell
+kubectl get nodes
+```
+
+### 2. Build and Load the Airflow Docker Image
 
 ```powershell
 docker build -t airflow-lab:local .
 kind load docker-image airflow-lab:local --name airflow-lab
 ```
 
-## 4. Create Namespace and Helm Repo
+### 3. Create Namespace and Add Helm Repo
 
 ```powershell
+kubectl create namespace airflow
 helm repo add apache-airflow https://airflow.apache.org/charts
 helm repo update
-kubectl create namespace airflow
 ```
 
-## 5. Create S3 Secret
+### 4. Set Your GitHub Repo URL
 
-```powershell
-kubectl create secret generic aws-s3-creds -n airflow `
-  --from-literal=AWS_ACCESS_KEY_ID=YOUR_KEY `
-  --from-literal=AWS_SECRET_ACCESS_KEY=YOUR_SECRET `
-  --from-literal=AWS_DEFAULT_REGION=us-east-1 `
-  --from-literal=S3_BUCKET=YOUR_BUCKET `
-  --from-literal=S3_PREFIX=airflow-collected
-```
-
-The DAG upload task fails if `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or `S3_BUCKET` is missing.
-
-## 6. Set GitHub Repo URL
-
-Open `helm/airflow-values.yaml` and replace:
+Open `helm/airflow-values.yaml` and set the `repo` field under `dags.gitSync`:
 
 ```yaml
-repo: https://github.com/YOUR_ORG/airflow-labs-data-collection-quickstart.git
+dags:
+  gitSync:
+    repo: https://github.com/YOUR_USER/airflow-labs-data-collection-quickstart.git
 ```
 
-Use the HTTPS URL of the GitHub repo that contains this `dags/` folder.
+> **Private repo?** Create a GitHub PAT, then create a K8s secret and uncomment `credentialsSecret`:
+>
+> ```powershell
+> kubectl create secret generic git-credentials -n airflow `
+>   --from-literal=GITSYNC_USERNAME=your-github-username `
+>   --from-literal=GITSYNC_PASSWORD=ghp_your_personal_access_token
+> ```
 
-## 7. Install Airflow
+### 5. Install Airflow via Helm
 
 ```powershell
 helm upgrade --install airflow apache-airflow/airflow -n airflow `
-  -f helm/airflow-values.yaml `
-  -f helm/workers-s3-secret.yaml `
-  --version 1.18.0
+  -f helm/airflow-values.yaml
 ```
 
-## 8. Check Pods
+### 6. Wait for All Pods to Start
 
 ```powershell
-kubectl get pods -n airflow
+kubectl get pods -n airflow -w
 ```
 
-Wait for Airflow pods to become `Running` and setup jobs to become `Completed`.
+Wait until all pods show `Running` (or `Completed` for jobs). This takes 3-5 minutes.
 
-## 9. Open Airflow UI
+Expected pods:
 
-```powershell
-kubectl port-forward svc/airflow-webserver 8080:8080 -n airflow
+```
+airflow-api-server-xxx       Running
+airflow-dag-processor-xxx    Running
+airflow-scheduler-xxx        Running
+airflow-worker-xxx           Running
+airflow-triggerer-xxx        Running
+airflow-redis-xxx            Running
+airflow-postgresql-xxx       Running
 ```
 
-Open:
-
-```text
-http://localhost:8080
-```
-
-Login:
-
-```text
-admin / admin
-```
-
-## 10. Run DAG
-
-Run any DAG:
-
-- `api_user_collection_to_s3`
-- `scraping_collection_to_s3`
-- `crawling_collection_to_s3`
-- `google_public_api_collection_to_s3`
-
-Steps:
-
-1. Open one DAG.
-2. Unpause it.
-3. Click **Trigger DAG**.
-4. Verify CSV files in S3 under:
-
-```text
-s3://YOUR_BUCKET/airflow-collected/<source-folder>/
-```
-
-## 11. Debug CSV Files Inside Worker Pod
-
-Use only if you want to inspect local staging files before S3 upload:
+### 7. Verify Git-Sync is Working
 
 ```powershell
 $worker = kubectl get pod -n airflow -l component=worker -o jsonpath="{.items[0].metadata.name}"
-kubectl exec -n airflow "$worker" -c worker -- ls -l /opt/airflow/data
+kubectl exec -n airflow "$worker" -c git-sync -- ls /opt/airflow/dags/repo/dags/
 ```
 
-## 12. Update DAGs from GitHub
+You should see all DAG files listed.
 
-1. Edit files under `dags/`.
-2. Push to GitHub branch `main`.
-3. Wait `60` seconds for git-sync.
-4. Airflow loads the updated DAG code.
+### 8. Open the Airflow UI
+
+```powershell
+kubectl port-forward svc/airflow-api-server 8080:8080 -n airflow
+```
+
+Open in browser:
+
+```
+http://localhost:8080
+```
+
+Login credentials:
+
+```
+Username: admin
+Password: admin
+```
+
+### 9. Set AWS Variables in the Airflow UI
+
+Go to **Admin -> Variables** and add these 5 variables:
+
+| Variable Key | Value | Required |
+|-------------|-------|----------|
+| `aws_access_key_id` | Your AWS access key | Yes |
+| `aws_secret_access_key` | Your AWS secret key | Yes |
+| `aws_default_region` | `us-east-1` (or your region) | Yes |
+| `s3_bucket` | Your S3 bucket name | Yes |
+| `s3_prefix` | `airflow-collected` | Optional |
+
+**Option A - Add one by one** in the UI.
+
+**Option B - Bulk import from JSON:**
+
+1. Edit `variables_template.json` with your real values
+2. In the UI, go to **Admin -> Variables -> Import Variables**
+3. Upload the edited JSON file
+
+### 10. Run the DAGs
+
+1. In the UI, you will see 5 DAGs listed
+2. **Unpause** each DAG by clicking the toggle
+3. Click **Trigger DAG** on any DAG
+4. Watch the run in the **Grid** or **Graph** view
+5. Both tasks should turn **green** (success)
+
+### 11. Verify Files in S3
+
+```powershell
+aws s3 ls s3://YOUR_BUCKET/airflow-collected/ --recursive
+```
+
+---
+
+## Updating DAGs (Git-Sync Workflow)
+
+1. Edit files under `dags/`
+2. Commit and push to GitHub branch `main`
+3. Wait 60 seconds for git-sync
+4. Airflow automatically loads the updated DAGs
+5. Trigger the DAG again
+
+```powershell
+git add dags/
+git commit -m "update DAG logic"
+git push origin main
+```
+
+---
+
+## Troubleshooting
+
+### DAGs not appearing in the UI
+
+```powershell
+# Check git-sync logs in the worker pod
+$worker = kubectl get pod -n airflow -l component=worker -o jsonpath="{.items[0].metadata.name}"
+kubectl logs -n airflow "$worker" -c git-sync --tail=30
+```
+
+### S3 upload failing
+
+```powershell
+$worker = kubectl get pod -n airflow -l component=worker -o jsonpath="{.items[0].metadata.name}"
+kubectl logs -n airflow "$worker" -c worker --tail=30
+```
+
+### Check DAG import errors
+
+```powershell
+$dagproc = kubectl get pod -n airflow -l component=dag-processor -o jsonpath="{.items[0].metadata.name}"
+kubectl logs -n airflow "$dagproc" -c dag-processor --tail=30
+```
+
+---
 
 ## Cleanup
 
@@ -174,4 +241,4 @@ kind delete cluster --name airflow-lab
 
 ---
 
-Repository tag: **Rajinikanth Vadla**  MLOps data collection reference.
+**Repository**: Rajinikanth Vadla - MLOps Data Collection Lab

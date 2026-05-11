@@ -1,6 +1,9 @@
-# Chart: https://airflow.apache.org/docs/helm-chart/stable/index.html
-# After: docker build -t airflow-lab:local . && kind load docker-image airflow-lab:local --name <cluster>
-# Set dags.gitSync.repo to the HTTPS URL of the repo that contains this dags/ folder.
+# Airflow Helm Chart 1.21.0 / Airflow 3.2.0
+# Docs: https://airflow.apache.org/docs/helm-chart/stable/index.html
+#
+# Build image first:
+#   docker build -t airflow-lab:local .
+#   kind load docker-image airflow-lab:local --name airflow-lab
 
 images:
   airflow:
@@ -8,12 +11,15 @@ images:
     tag: local
     pullPolicy: Never
 
-executor: CeleryExecutor
+executor: "CeleryExecutor"
 
 config:
   core:
     load_examples: "False"
 
+# ---------------------------------------------------------------------------
+# Git-sync: pulls DAGs from GitHub into all Airflow pods every 60s
+# ---------------------------------------------------------------------------
 dags:
   persistence:
     enabled: false
@@ -21,12 +27,21 @@ dags:
     enabled: true
     repo: https://github.com/rajinikanthvadla-ai/airflow-labs-data-collection-quickstart.git
     branch: main
+    ref: main
     rev: HEAD
     depth: 1
-    subPath: ""
-    wait: 30
+    maxFailures: 0
+    subPath: "dags"
+    wait: 60
+    containerName: git-sync
     uid: 65533
 
+    # --- For PRIVATE repos: create secret then uncomment ---
+    # credentialsSecret: git-credentials
+
+# ---------------------------------------------------------------------------
+# Default admin user  (login: admin / admin)
+# ---------------------------------------------------------------------------
 createUserJob:
   useHelmHooks: false
   applyCustomEnv: false
@@ -42,11 +57,14 @@ migrateDatabaseJob:
   useHelmHooks: false
   applyCustomEnv: false
 
+# ---------------------------------------------------------------------------
+# Component scaling
+# ---------------------------------------------------------------------------
 workers:
   replicas: 1
 
 triggerer:
-  enabled: false
+  enabled: true
 
 flower:
   enabled: false

@@ -2,3 +2,4 @@ airflow-output/
 __pycache__/
 *.pyc
 .venv/
+variables.json
